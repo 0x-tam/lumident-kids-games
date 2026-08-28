@@ -1,0 +1,575 @@
+@import "tailwindcss";
+
+/*
+ * Lumident brand tokens — derived from the Lumident website
+ * (warm cream surfaces, the departmental red family, Manrope everywhere)
+ * paired with the soft-3D clay treatment of the brand icon set.
+ */
+
+@theme {
+  --font-display: "Manrope", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, sans-serif;
+
+  /* Brand red (pediatric) */
+  --color-red-soft: #f7d9dc;
+  --color-red-main: #e8474f;
+  --color-red-deep: #c21e25;
+  /* Gum / paste coral */
+  --color-coral-soft: #fae1d9;
+  --color-coral-main: #e8604c;
+  --color-coral-deep: #c74430;
+  /* Warm peach */
+  --color-peach-soft: #f8ead9;
+  --color-peach-main: #efa160;
+  --color-peach-deep: #c97a34;
+  /* Ortho rose */
+  --color-rose-soft: #f2c6cb;
+  --color-rose-main: #cf4a55;
+  --color-rose-deep: #b2343f;
+  /* Clay mauve */
+  --color-mauve-soft: #efdfda;
+  --color-mauve-main: #c08475;
+  --color-mauve-deep: #9c6355;
+
+  /*
+   * The ink ramp is contrast-first. Measured with the repo's own contrastRatio() against
+   * the two surfaces these ever land on:
+   *
+   *   ink      #2f3237  10.45:1 on page  ·  9.43:1 on well
+   *   ink-mid  #575349   6.23:1 on page  ·  5.62:1 on well   (was #6b675f — 4.12:1 on the
+   *                                                           clay-well level pills, AA fail)
+   *   ink-soft #67635a   4.86:1 on page  ·  5.27:1 on clay    (was #8f897d — 2.82:1, i.e.
+   *                                                           every one of its 11 usages
+   *                                                           failed AA, including the mute
+   *                                                           and restart icons)
+   *
+   * ink-soft is a *page* colour: never put it on `clay-well` (4.38:1) and never fade it —
+   * `text-ink-soft/75` measured 2.09:1.
+   */
+  --color-ink: #2f3237;
+  --color-ink-mid: #575349;
+  --color-ink-soft: #67635a;
+  --color-surface: #faf6ee;
+  --color-well: #e3dccd;
+  --color-line: #d9d2c2;
+  --color-page: #ede7dc;
+}
+
+html,
+body {
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--color-ink);
+  min-height: 100%;
+  -webkit-tap-highlight-color: transparent;
+  background-color: #ede7dc;
+  background-image:
+    radial-gradient(700px 460px at 90% -80px, rgba(232, 71, 79, 0.09), transparent 70%),
+    radial-gradient(560px 420px at -90px 30%, rgba(232, 96, 76, 0.08), transparent 70%),
+    radial-gradient(640px 440px at 105% 82%, rgba(239, 161, 96, 0.09), transparent 70%),
+    radial-gradient(500px 380px at 18% 108%, rgba(207, 74, 85, 0.07), transparent 70%);
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+* {
+  touch-action: manipulation;
+}
+
+/*
+ * The global focus indicator.
+ *
+ * `rose.deep`, not `rose.main`: 4.94:1 on the page against 3.58:1, and it still clears the
+ * 3:1 UI floor over the peach and mauve clay a hub card's ring sits on.
+ *
+ * The 3 px offset is load-bearing — it leaves a gap of whatever is behind the control, so
+ * the indicator reads as two tones (line, gap, surface) on any backing.
+ *
+ * `border-radius` is deliberately NOT set here. Outlines follow the element's own radius on
+ * their own, so a pill stays a pill.
+ *
+ * ## Why this is inside `@layer base` (A10b)
+ *
+ * It used to be unlayered. An unlayered rule beats *every* layered one regardless of
+ * specificity, and Tailwind puts its whole utility set in `@layer utilities` — so
+ * `focus-visible:outline-none`, the escape hatch, could not win against this and never once
+ * worked anywhere in the product. The visible consequence was photographed: the celebration
+ * headline takes programmatic focus at the win, carries `focus-visible:outline-none`, and
+ * still drew a hard-cornered 3 px rectangle straight across the 3D board in
+ * `maze-escape-keyboard-end.png`, `tooth-rescue-keyboard-end.png`,
+ * `tooth-runner-keyboard-end.png` and `sliding-puzzle-celebration-f12.png` — a right-angled
+ * box over the hero moment, in a product whose first paragraph is "there is no hard edge
+ * anywhere".
+ *
+ * In `base` it still applies to everything that does not say otherwise, and a utility can
+ * now override it. Nothing else about the indicator changes.
+ */
+@layer base {
+  :focus-visible {
+    outline: 3px solid #b2343f;
+    outline-offset: 3px;
+  }
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@keyframes lumi-burst {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)) scale(0.6);
+  }
+}
+
+@keyframes lumi-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(2deg);
+  }
+}
+
+@keyframes lumi-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Sprite animations for the arcade games — pure CSS, no per-frame React work. */
+@keyframes lumi-trail {
+  from {
+    opacity: 0.9;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.25;
+  }
+}
+
+@keyframes lumi-catch {
+  55% {
+    scale: 1.3;
+    opacity: 1;
+  }
+  100% {
+    scale: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes lumi-fly-off {
+  30% {
+    translate: 20px -50px;
+    rotate: 120deg;
+    opacity: 1;
+  }
+  100% {
+    translate: 70px 150px;
+    rotate: 340deg;
+    opacity: 0;
+  }
+}
+
+@keyframes lumi-fade-out {
+  to {
+    scale: 0.25;
+    opacity: 0;
+  }
+}
+
+/*
+ * The house press, in CSS.
+ *
+ * `src/three/anim.ts` FEEL is the source of truth: windUp 70 ms, pressDown 90 ms,
+ * pressScale 0.94, releaseOvershoot 1.06. A CSS transition cannot wind up — it can only
+ * travel from A to B — so the press half is a keyframe animation triggered by `:active`
+ * (which does fire on press), and the release half is the base transition, which fires when
+ * the animation and the `:active` transform are both dropped.
+ *
+ * 44% of 160 ms is the 70 ms wind-up; the remaining 90 ms is the sink.
+ */
+@keyframes lumi-press {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  44% {
+    transform: translate(0, -1.5px) scale(1.03);
+  }
+  100% {
+    transform: translate(0, 2px) scale(0.94);
+  }
+}
+
+@keyframes lumi-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -3px;
+  }
+}
+
+@layer components {
+  /* Big soft clay card surface */
+  .neu-surface {
+    background: linear-gradient(165deg, #fbf7f0, #efe8db);
+    box-shadow:
+      inset 3px 3px 6px rgba(255, 255, 255, 0.95),
+      inset -4px -9px 16px rgba(64, 54, 42, 0.06),
+      0 28px 52px -26px rgba(64, 54, 42, 0.4);
+  }
+
+  /* Raised clay button */
+  .neu-raised {
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(145deg, #fffdf9, #efe8da);
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-weight: 800;
+    /* The §1.5 / §8 48 px floor, on the class — see `.clay-btn`. This one is the Welcome
+       screen's age stepper and "Let's play", which are the first controls a child ever
+       touches. */
+    min-height: 48px;
+    min-width: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+      inset 2px 3px 5px rgba(255, 255, 255, 0.95),
+      inset -3px -6px 10px rgba(64, 54, 42, 0.08),
+      0 12px 22px -12px rgba(64, 54, 42, 0.5);
+    /*
+      The release half of the press. `cubic-bezier(0.2, 4, 0.55, 1)` peaks at 2.08× of the
+      0.94 → 1 travel, i.e. it springs to scale 1.065 and settles — FEEL.releaseOvershoot.
+      It is emphatically not `ease`: that is the ease-in-out family the spec bans on
+      anything a child touches, and this is the Welcome screen's age stepper.
+    */
+    transition:
+      transform 240ms cubic-bezier(0.2, 4, 0.55, 1),
+      box-shadow 180ms cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  .neu-raised:active {
+    transform: translate(0, 2px) scale(0.94);
+    animation: lumi-press 160ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+    box-shadow:
+      inset 2px 3px 5px rgba(255, 255, 255, 0.95),
+      inset -3px -6px 10px rgba(64, 54, 42, 0.08),
+      0 3px 8px -6px rgba(64, 54, 42, 0.45);
+  }
+  .neu-raised:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    animation: none;
+  }
+
+  /* Pressed-in well (inputs, level track) */
+  .neu-well {
+    background: #e3dccd;
+    box-shadow:
+      inset 4px 5px 9px rgba(64, 54, 42, 0.12),
+      inset -3px -3px 7px rgba(255, 255, 255, 0.8);
+  }
+
+  /* Small raised HUD chip */
+  .neu-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 999px;
+    padding: 9px 16px;
+    background: linear-gradient(145deg, #fffdf9, #f2ebdd);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+    box-shadow:
+      inset 2px 2px 4px rgba(255, 255, 255, 0.9),
+      inset -2px -4px 8px rgba(64, 54, 42, 0.07),
+      0 8px 16px -10px rgba(64, 54, 42, 0.45);
+  }
+
+  /*
+   * Clay chrome — the hub's and GameShell's buttons, chips and wells.
+   *
+   * Lit to match the 3D scene rather than to match a web page: the highlight sits top-left
+   * where KEY_LIGHT is, the occlusion bottom-right, and the cast shadow falls down *and to
+   * the right* instead of straight down. Pressing sinks the surface along the same axis.
+   */
+  .clay-btn {
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: var(--color-ink);
+    /*
+      Same §1.5 / §8 floor as `.grad-btn`, and for the same reason: the rule belongs to the
+      class, not to each of the two dozen call sites that would each have to remember it.
+      `?selftest=dom-hit-targets` walks every rendered `<button>` and fails on anything
+      under 48 px in either axis, so a new one cannot quietly ship at 35 px again.
+    */
+    min-height: 48px;
+    min-width: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /*
+      Clay, not glass. The old ramp topped out at #fffcf6 — 8% brighter than the page and
+      brighter than any lit surface in the scene — which is what made the chrome read as a
+      white web widget sitting on top of the world rather than as another object on the
+      same table. It now sits inside the page's own value range: lighter than #EDE7DC where
+      the key hits it, darker where it turns away.
+    */
+    background: linear-gradient(158deg, #f6f0e3, #e9e1d1);
+    box-shadow:
+      inset 2px 3px 5px rgba(255, 253, 246, 0.85),
+      inset -3px -6px 10px rgba(94, 74, 54, 0.1),
+      6px 11px 20px -12px rgba(94, 74, 54, 0.42);
+    transition:
+      transform 130ms cubic-bezier(0.34, 1.42, 0.64, 1),
+      box-shadow 130ms cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  .clay-btn:active {
+    transform: translate(1px, 2px) scale(0.975);
+    box-shadow:
+      inset 2px 3px 5px rgba(255, 253, 246, 0.8),
+      inset -3px -6px 10px rgba(94, 74, 54, 0.13),
+      2px 4px 9px -7px rgba(94, 74, 54, 0.42);
+  }
+  .clay-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .clay-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 999px;
+    padding: 9px 16px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+    /* Same clay ramp as `.clay-btn`: a HUD chip is a small slab on the table, not a pane
+       of glass floating over it. */
+    background: linear-gradient(158deg, #f7f1e4, #eae2d2);
+    box-shadow:
+      inset 2px 2px 4px rgba(255, 253, 246, 0.8),
+      inset -2px -3px 6px rgba(94, 74, 54, 0.09),
+      5px 9px 16px -9px rgba(94, 74, 54, 0.4);
+  }
+
+  /*
+   * A bigger sibling of `.clay-chip`: the celebration's score plate.
+   *
+   * It used to be authored inline as `linear-gradient(158deg, #FFFEFB, #F4EFE5)` with a
+   * drop shadow — a *white* slab, brighter than the page and brighter than any lit surface
+   * in the scene, i.e. a web card floating over the world rather than another object on the
+   * same table. Same ramp as the chips now, and the same key direction: highlight top-left,
+   * occlusion bottom-right, cast shadow down *and* to the right.
+   */
+  .clay-plate {
+    background: linear-gradient(158deg, #f7f1e4, #eae2d2);
+    box-shadow:
+      inset 3px 4px 6px rgba(255, 253, 246, 0.85),
+      inset -3px -6px 11px rgba(94, 74, 54, 0.1),
+      8px 15px 26px -15px rgba(94, 74, 54, 0.45);
+  }
+
+  /*
+   * The fogged edge of a 3D region — the play area, the hub's card grid, the celebration.
+   *
+   * A drei `<View>` is a scissor rectangle: without this, anything that reaches the boundary
+   * is cut with a razor edge halfway through an object and the child sees the rectangle
+   * instead of the world. The audit photographed exactly that — the hub's Healthy-or-Not
+   * apple sliced at `#d72e2f` slamming into cream, answer tiles guillotined by the bottom
+   * edge, confetti hard-clipped at both ends.
+   *
+   * Authored in `--color-page` on purpose: the same value `clayGround` is calibrated to
+   * render back at (measured dE2000 0.5), so over the ground the feather is invisible and it
+   * only shows where a prop, a shadow or a confetti flake runs off the edge.
+   *
+   * Put it *before* the region's own interactive children in DOM order — it is a sibling at
+   * the same stacking level, so anything that must stay crisp (a card's label) paints over it.
+   */
+  .world-edge {
+    --feather: 30px;
+    --feather-mid: color-mix(in srgb, var(--color-page) 72%, transparent);
+    background-image:
+      linear-gradient(to bottom, var(--color-page) 0, var(--feather-mid) 30%, transparent var(--feather)),
+      linear-gradient(to top, var(--color-page) 0, var(--feather-mid) 30%, transparent var(--feather)),
+      linear-gradient(to right, var(--color-page) 0, var(--feather-mid) 30%, transparent var(--feather)),
+      linear-gradient(to left, var(--color-page) 0, var(--feather-mid) 30%, transparent var(--feather));
+    background-repeat: no-repeat;
+    background-size:
+      100% var(--feather),
+      100% var(--feather),
+      var(--feather) 100%,
+      var(--feather) 100%;
+    background-position: top, bottom, left, right;
+  }
+
+  /* A well pressed into the table: light in from the upper-left, shade with it. */
+  .clay-well {
+    background: rgba(226, 217, 201, 0.85);
+    box-shadow:
+      inset 4px 5px 8px rgba(94, 74, 54, 0.13),
+      inset -2px -3px 6px rgba(255, 255, 255, 0.72);
+  }
+
+  /*
+   * Accent gradient buttons (primary actions, active level chip).
+   *
+   * ## Why the label colour is a variable
+   *
+   * It used to be a flat `#ffffff` over all five ramps, and nobody had ever run the repo's
+   * own `contrastRatio()` on it. Measured against the *stops themselves* (not a screenshot):
+   * peach 1.81:1, mauve 2.59:1, coral 2.78:1, rose 3.42:1, red 3.60:1 at the light end —
+   * against the 4.5:1 AA floor that a 14 px/800 level pill needs. Every primary button in
+   * the product failed, including "Play again" on all nine celebrations.
+   *
+   * Checking the two stops is sufficient for the whole ramp: `linear-gradient` interpolates
+   * each channel linearly, and WCAG's `channelLuminance` is monotone increasing in each
+   * channel, so relative luminance is monotone along the ramp and its extremes are the two
+   * stops. Nothing between them can be worse than both.
+   *
+   * ## How these five ramps were derived
+   *
+   * Rule, applied mechanically rather than by eye:
+   *   1. A family keeps `#2f3237` if its *existing* ramp already clears 4.6:1 against ink.
+   *      Exactly one does — peach, at 7.11:1 / 4.81:1 — so peach is unchanged apart from
+   *      its label colour. Every other family fails ink at its dark end (red 2.29, rose
+   *      2.12, coral 2.98, mauve 3.14) and takes white instead.
+   *   2. A white family's `--g-from` is the **lightest point on that family's own
+   *      `deep → main` axis** that still clears 4.6:1 against white — so the hue is the
+   *      brand hue by construction, not by adjustment. Measured HSL hues out: red 357°,
+   *      coral 8°, rose 355°, mauve 12° — identical to `--color-*-main`/`-deep` above.
+   *   3. `--g-to` is `--g-from` taken toward black until its relative luminance is 0.70 of
+   *      `--g-from`'s. 0.70 is not a taste call: it is the ratio that reproduces the brand
+   *      `deep` tokens from the solved `from` (red lands at L 0.124 against `red-deep`'s
+   *      0.125, rose at 0.124 against `rose-deep`'s 0.123).
+   *
+   * Resulting ratios, which `?selftest=chrome-contrast` re-derives from the *computed*
+   * values of these very custom properties on every run:
+   *
+   *   red    white  4.62 / 6.03      coral  white  4.62 / 6.03
+   *   rose   white  4.60 / 6.02      mauve  white  4.63 / 6.06
+   *   peach  ink    7.11 / 4.81
+   *
+   * The 0.1 over 4.5 is headroom for the sub-pixel rounding a rasteriser applies to text,
+   * not a fudge factor — no stop is anywhere near the boundary.
+   *
+   * `--g-inset` and `--g-glow` are shadows rather than text, and are derived from `--g-to`:
+   * inset is `to` at 45% toward black, glow is `to` itself, at the alphas they always had.
+   */
+  .grad-btn {
+    border: none;
+    cursor: pointer;
+    /* Fallback for a `.grad-btn` with no `.grad-*` family: ink on cream stays legible. */
+    color: var(--g-ink, #2f3237);
+    font-family: var(--font-display);
+    font-weight: 800;
+    /*
+      §1.5 / §8 floor, enforced on the class rather than per call site.
+
+      `min-height`/`min-width` rather than `height`/`width` on purpose: CSS resolves a used
+      size as `max(min-size, size)`, so this floor beats an explicit `h-[40px]` from the
+      utilities layer instead of losing to it. No call site in the product sets `min-h-*` or
+      `min-w-*` on one of these classes (grep), so nothing overrides it today either.
+
+      The flex centring is what puts the label in the middle of the grown box; a caller that
+      wants a different display — `.clay-btn` is often `grid h-[50px] w-[50px]` — takes it
+      from the utilities layer, which Tailwind orders after this one.
+    */
+    min-height: 48px;
+    min-width: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, var(--g-from), var(--g-to));
+    /* Cast down *and to the right*, like every other object the key touches — a shadow that
+       falls straight down is the last tell that a control is a web widget rather than a
+       lump of clay on the same table. */
+    box-shadow:
+      inset 2px 3px 5px rgba(255, 255, 255, 0.5),
+      inset -3px -6px 10px var(--g-inset),
+      7px 16px 28px -12px var(--g-glow);
+    /* Same press as `.neu-raised` — see the note there. This is "Play again" on every
+       celebration, every difficulty pill, and "Let's play". */
+    transition:
+      transform 240ms cubic-bezier(0.2, 4, 0.55, 1),
+      box-shadow 180ms cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  .grad-btn:active {
+    transform: translate(0, 2px) scale(0.94);
+    animation: lumi-press 160ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+    box-shadow:
+      inset 2px 3px 5px rgba(255, 255, 255, 0.5),
+      inset -3px -6px 10px var(--g-inset),
+      2px 5px 10px -8px var(--g-glow);
+  }
+  .grad-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    animation: none;
+  }
+  .grad-red { --g-ink: #ffffff; --g-from: #d9363e; --g-to: #b82e35; --g-inset: rgba(83, 21, 24, 0.25); --g-glow: rgba(184, 46, 53, 0.55); }
+  .grad-coral { --g-ink: #ffffff; --g-from: #cc4834; --g-to: #ad3d2c; --g-inset: rgba(78, 27, 20, 0.25); --g-glow: rgba(173, 61, 44, 0.55); }
+  .grad-peach { --g-ink: #2f3237; --g-from: #f5b379; --g-to: #dd8b43; --g-inset: rgba(99, 63, 30, 0.25); --g-glow: rgba(221, 139, 67, 0.55); }
+  .grad-rose { --g-ink: #ffffff; --g-from: #cb4752; --g-to: #ac3c46; --g-inset: rgba(77, 27, 32, 0.25); --g-glow: rgba(172, 60, 70, 0.55); }
+  .grad-mauve { --g-ink: #ffffff; --g-from: #a06658; --g-to: #87564b; --g-inset: rgba(61, 39, 34, 0.25); --g-glow: rgba(135, 86, 75, 0.55); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /*
+   * A press still has to answer, or the control feels dead. The reduced path keeps a real
+   * but short move: no wind-up, no overshoot, ≤150 ms, ease-out only.
+   */
+  .grad-btn,
+  .neu-raised,
+  .clay-btn {
+    transition:
+      transform 140ms cubic-bezier(0.33, 1, 0.68, 1),
+      box-shadow 140ms cubic-bezier(0.33, 1, 0.68, 1) !important;
+  }
+  .grad-btn:active,
+  .neu-raised:active {
+    animation: none !important;
+    transform: translate(0, 2px) scale(0.97);
+  }
+}

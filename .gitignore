@@ -1,0 +1,15 @@
+# Build output and dependencies
+node_modules
+dist
+tsconfig.tsbuildinfo
+
+# Agent/verification working files. These are bundled throwaways (some are megabytes of
+# esbuild output) written while proving a fix; the proofs that matter live in docs/audits.
+scratchpad/
+.mz-bundle.mjs
+
+# Local editor/agent settings — launch.json IS tracked, it is how the dev server starts.
+.claude/settings.local.json
+
+# macOS
+.DS_Store

@@ -1,0 +1,52 @@
+REAL measured cost per scene, headless Chrome 151, Apple M5 GPU via ANGLE Metal,
+1440x900 CSS px at devicePixelRatio 1, natural requestAnimationFrame (no frame pump).
+GPU figures are EXT_disjoint_timer_query_webgl2 readings over a 240-frame window.
+THIS IS DESKTOP HARDWARE, NOT THE MID-RANGE ANDROID TABLET 3D-SPEC §9 NAMES.
+
+The project sets its own desktop proxy budgets in src/three/quality.ts::BUDGETS:
+  desktopFrameMsP95 = 4.2 ms  (CPU inside renderer.render)
+  desktopGpuMsP95   = 1.2 ms  ('1.2 ms here projects to ~14.4 ms on a Mali-G52 / Adreno 610 tablet')
+  gpuMsP95          = 16.7 ms (the hard fact: longer than this cannot hold 60fps anywhere)
+
+tier    scene                   GPU avg  GPU p95  GPU worst   x1.2ms  CPU p95  calls     tris  dropped
+------------------------------------------------------------------------------------------------------
+default hub                       2.154    2.216      2.369     1.85      1.2     36   111754        0
+default sliding-puzzle            2.368    3.572      3.880     2.98      1.5     43    87074        0
+default maze-escape               2.599    4.335      4.620     3.61      0.9     46    51230        0
+default tooth-match               2.720    2.794      2.834     2.33      1.1     24    69236        0
+default healthy-or-not            2.483    2.808      3.543     2.34      0.3     29    38432        0
+default spot-the-difference       0.951    0.985      1.104     0.82      1.3     59   107456        0
+default tooth-rescue              1.598    2.809      3.543     2.34      0.3     11    18126        0
+default count-the-teeth           2.061    2.307      2.398     1.92      0.3     24    86028        0
+default tooth-runner              1.802    2.462      4.241     2.05      0.3     57   124378        1
+default smile-maker               2.102    2.904      3.229     2.42      0.3     48   147300        0
+mid     hub                       2.163    2.230      3.124     1.86        1     36   111754        0
+mid     sliding-puzzle            1.521    1.914      3.135     1.59      1.4     43    51326        0
+mid     maze-escape               2.190    2.529      4.814     2.11        1     41    29486        0
+mid     tooth-match               2.352    2.474      2.510     2.06      0.7     11    32092        0
+mid     healthy-or-not            1.885    1.899      2.044     1.58      1.2     32    30258        0
+mid     spot-the-difference       1.352    2.069      4.658     1.72      0.3     58    92868        0
+mid     tooth-rescue              2.188    2.344      2.370     1.95        1     11    15310        0
+mid     count-the-teeth           1.867    2.249      4.362     1.87        0     18    64234        1
+mid     tooth-runner              2.285    2.469      4.079     2.06      0.3     53   112992        0
+mid     smile-maker               1.952    2.417      4.068     2.01      0.3     48    84240        0
+low     hub                       1.367    1.437      1.955     1.20      1.1     36    66046        0
+low     sliding-puzzle            1.303    1.350      3.181     1.13      1.5     43    29812        0
+low     maze-escape               1.301    1.703      3.191     1.42      0.9     46    17490        0
+low     tooth-match               1.697    2.074      2.454     1.73      0.6     11    18148        0
+low     healthy-or-not            1.323    1.653      2.663     1.38        0     25    14714        1
+low     spot-the-difference       0.980    1.405      2.058     1.17      0.3     58    86548        0
+low     tooth-rescue              0.997    1.723      2.123     1.44      0.2     11    13486        0
+low     count-the-teeth           1.490    1.543      2.214     1.29        1     21    46444        0
+low     tooth-runner              1.361    1.732      4.013     1.44      1.4     54    78268        0
+low     smile-maker               1.687    1.727      1.804     1.44      1.2     48    58048        0
+
+29 of 30 scene/tier readings exceed desktopGpuMsP95 = 1.2 ms, by 1.13x to 3.61x.
+Every reading is far below gpuMsP95 = 16.7 ms.
+CPU renderP95 never exceeds 1.5 ms against the 4.2 ms desktop CPU budget.
+
+Caveats a critic should apply:
+ - fps here is ~120 because this headless display is 120Hz. It is a vsync reading, not headroom.
+ - dropped frames are counted at >25ms intervals; 0 or 1 across every scene.
+ - a handful of rows were re-measured after an initial capture snapshotted a frame that
+   drew nothing; those re-measurements are the values shown (see the report).

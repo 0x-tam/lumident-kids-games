@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      No `maximum-scale` and no `user-scalable=no`. WCAG 1.4.4 requires the page to survive
+      200% zoom, and in a waiting room pinch is the only recourse a long-sighted parent has.
+
+      The two things that meta was standing in for are both handled properly elsewhere, so
+      nothing regresses by deleting it:
+        - the 300 ms double-tap-to-zoom delay is suppressed by `* { touch-action: manipulation }`
+          in `src/index.css`, which cancels double-tap zoom *without* cancelling pinch;
+        - iOS Safari's zoom-on-focus fires only for form controls under 16 px, and the one
+          `<input>` in the product (`src/Welcome.tsx`, the name field) is set at 21 px.
+      A game that must own a drag says so locally — `MazeEscape` renders its view `touch-none`.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lumident Kids Games</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Verification hook. Only active with ?drive=1, and it must run BEFORE any module is
+      evaluated: framer-motion and react-three-fiber both capture requestAnimationFrame at
+      import time, so a patch applied later never reaches them. Automated browsers park the
+      tab as hidden, where rAF never fires and ResizeObserver callbacks are never delivered
+      — so without this the app cannot be screenshotted or measured at all. See src/dev/drive.ts.
+    -->
+    <script>
+      (function () {
+        if (!/[?&]drive=1/.test(location.search)) return;
+        var queue = new Map();
+        var nextId = 1;
+        window.requestAnimationFrame = function (cb) {
+          var id = nextId++;
+          queue.set(id, cb);
+          return id;
+        };
+        window.cancelAnimationFrame = function (id) {
+          queue.delete(id);
+        };
+        var RealRO = window.ResizeObserver;
+        var observers = new Set();
+        window.ResizeObserver = function (cb) {
+          var targets = new Set();
+          var inner = new RealRO(cb);
+          var api = {
+            observe: function (t, o) {
+              targets.add(t);
+              inner.observe(t, o);
+              queueMicrotask(function () {
+                if (targets.has(t)) cb([entry(t)], api);
+              });
+            },
+            unobserve: function (t) {
+              targets.delete(t);
+              inner.unobserve(t);
+            },
+            disconnect: function () {
+              targets.clear();
+              inner.disconnect();
+            },
+            remeasure: function () {
+              targets.forEach(function (t) {
+                cb([entry(t)], api);
+              });
+            },
+          };
+          observers.add(api);
+          return api;
+        };
+        function entry(target) {
+          var r = target.getBoundingClientRect();
+          var box = { inlineSize: r.width, blockSize: r.height };
+          return {
+            target: target,
+            contentRect: r,
+            borderBoxSize: [box],
+            contentBoxSize: [box],
+            devicePixelContentBoxSize: [box],
+          };
+        }
+        window.__driveHooks = {
+          queue: queue,
+          remeasureAll: function () {
+            observers.forEach(function (o) {
+              o.remeasure();
+            });
+          },
+        };
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
